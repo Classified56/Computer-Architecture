@@ -3,16 +3,16 @@
 const unsigned instShiftAmt = 2; // Number of bits to shift a PC by
 
 // You can play around with these settings.
-const unsigned localPredictorSize = 16384;
+const unsigned localPredictorSize = 65536;
 const unsigned localCounterBits = 2;
 
-const unsigned localHistoryTableSize = 2048; 
-const unsigned globalPredictorSize = 8192;
+const unsigned localHistoryTableSize = 16384; 
+const unsigned globalPredictorSize = 65536;
 const unsigned globalCounterBits = 2;
-const unsigned choicePredictorSize = 8192; // Keep this the same as globalPredictorSize.
+const unsigned choicePredictorSize = 65536; // Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;
 
-const unsigned gsharePredictorSize = 2048;
+const unsigned gsharePredictorSize = 65536;
 const unsigned gshareCounterBits = 2;
 
 Branch_Predictor *initBranchPredictor()
@@ -263,13 +263,13 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     if (instr->taken)
     {
         // printf("Correct: %u -> ", branch_predictor->local_counters[local_index].counter);
-        incrementCounter(&(branch_predictor->local_counters[local_index]));
+        incrementCounter(&(branch_predictor->local_counters[gshare_index]));
         // printf("%u\n", branch_predictor->local_counters[local_index].counter);
     }
     else
     {
         // printf("Incorrect: %u -> ", branch_predictor->local_counters[local_index].counter);
-        decrementCounter(&(branch_predictor->local_counters[local_index]));
+        decrementCounter(&(branch_predictor->local_counters[gshare_index]));
         // printf("%u\n", branch_predictor->local_counters[local_index].counter);
     }
 
