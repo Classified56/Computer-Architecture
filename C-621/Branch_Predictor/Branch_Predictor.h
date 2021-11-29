@@ -11,8 +11,8 @@
 
 // Predictor type
 //#define TWO_BIT_LOCAL
-#define TOURNAMENT
-//#define GSHARE
+//#define TOURNAMENT
+#define GSHARE
 
 extern const unsigned localPredictorSize;
 extern const unsigned localCounterBits;
@@ -61,6 +61,16 @@ typedef struct Branch_Predictor
     uint64_t global_history;
     unsigned history_register_mask;
     #endif
+
+    #ifdef GSHARE
+    unsigned ghsare_predictor_sets;
+    unsigned index_mask;
+
+    uint64_t global_history;
+    unsigned history_register_mask;
+
+    Sat_Counter *local_counters;
+    #endif 
 }Branch_Predictor;
 
 // Initialization function

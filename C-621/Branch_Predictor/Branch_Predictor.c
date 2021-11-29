@@ -12,6 +12,9 @@ const unsigned globalCounterBits = 2;
 const unsigned choicePredictorSize = 8192; // Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;
 
+const unsigned gsharePredictorSize = 2048;
+const unsigned gshareCounterBits = 2;
+
 Branch_Predictor *initBranchPredictor()
 {
     Branch_Predictor *branch_predictor = (Branch_Predictor *)malloc(sizeof(Branch_Predictor));
@@ -95,6 +98,26 @@ Branch_Predictor *initBranchPredictor()
 
     // We assume choice predictor size is always equal to global predictor size.
     branch_predictor->history_register_mask = choicePredictorSize - 1;
+    #endif
+
+    #ifdef GSHARE
+    branch_predictor->ghsare_predictor_sets = gsharePredictorSize;
+    assert(checkPowerofTwo(branch_predictor->ghsare_predictor_sets));
+
+    branch_predictor->index_mask = branch_predictor->ghsare_predictor_sets - 1;
+
+    // Initialize sat counters
+    branch_predictor->local_counters =
+        (Sat_Counter *)malloc(branch_predictor->ghsare_predictor_sets * sizeof(Sat_Counter));
+
+    int i = 0;
+    for (i; i < branch_predictor->ghsare_predictor_sets; i++)
+    {
+        initSatCounter(&(branch_predictor->local_counters[i]), gshareCounterBits);
+    }
+
+    branch_predictor->global_history = 0;
+    branch_predictor->history_register_mask = branch_predictor->ghsare_predictor_sets - 1;
     #endif
 
     return branch_predictor;
@@ -225,6 +248,35 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     //
     return prediction_correct;
     #endif
+
+    #ifdef GSHARE    
+    // Step one, get prediction
+    unsigned local_index = getIndex(branch_address, branch_predictor->index_mask);
+
+    unsigned global_index = branch_predictor->global_history & branch_predictor->history_register_mask;
+
+    unsigned gshare_index = local_index ^ global_index;
+
+    bool prediction = getPrediction(&(branch_predictor->local_counters[gshare_index]));
+
+    // Step two, update counter
+    if (instr->taken)
+    {
+        // printf("Correct: %u -> ", branch_predictor->local_counters[local_index].counter);
+        incrementCounter(&(branch_predictor->local_counters[local_index]));
+        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
+    }
+    else
+    {
+        // printf("Incorrect: %u -> ", branch_predictor->local_counters[local_index].counter);
+        decrementCounter(&(branch_predictor->local_counters[local_index]));
+        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
+    }
+
+    branch_predictor->global_history = branch_predictor->global_history << 1 | instr->taken;
+
+    return prediction == instr->taken;
+    #endif    
 }
 
 inline unsigned getIndex(uint64_t branch_addr, unsigned index_mask)
